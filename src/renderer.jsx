@@ -14,6 +14,7 @@ const ReactDOM = require('react-dom');
 const classnames = require('classnames');
 
 const captureFrame = require('./capture-frame');
+const captureBookmark = require('./capture-bookmark');
 const ffmpeg = require('./ffmpeg');
 const util = require('./util');
 
@@ -70,6 +71,7 @@ function renderHelpSheet(visible) {
           <li><kbd>O</kbd> Mark out / cut end point</li>
           <li><kbd>E</kbd> Cut (export selection in the same directory)</li>
           <li><kbd>C</kbd> Capture snapshot (in the same directory)</li>
+          <li><kbd>B</kbd> Bookmark Interval</li>
         </ul>
       </div>
     );
@@ -227,6 +229,7 @@ class App extends React.Component {
     Mousetrap.bind('i', () => this.setCutStart());
     Mousetrap.bind('o', () => this.setCutEnd());
     Mousetrap.bind('h', () => this.toggleHelp());
+    Mousetrap.bind('b', () => this.markInterest());
 
     electron.ipcRenderer.send('renderer-ready');
   }
@@ -349,6 +352,24 @@ class App extends React.Component {
     this.setState({ working: true });
     await trash(filePath);
     this.resetState();
+  }
+
+  markInterest = async () => {
+    const {
+      cutStartTime, cutEndTime, filePath, customOutDir, fileFormat, duration, includeAllStreams,
+      stripAudio, keyframeCut,
+    } = this.state;
+
+    if (!this.isCutRangeValid()) {
+      return alert('Start time must be before end time');
+    }
+
+    this.setState({ working: true });
+    try {
+      return await captureBookmark(customOutDir, filePath, cutStartTime, cutEndTime)
+    } finally {
+      this.setState({ working: false });
+    }
   }
 
   cutClick = async () => {
